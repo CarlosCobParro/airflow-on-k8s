@@ -208,9 +208,9 @@ def upload_model_mlflow(**kwargs):
     minio_user = "sdg-user"
     minio_pass = "sdg-password"
     print("hola")    
-    os.environ["MLFLOW_S3_ENDPOINT_URL"] = "minio-cli.minio.svc.cluster.local:9000"
-    os.environ["AWS_ACCESS_KEY_ID"] = "sdg-user"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "sdg-password"
+    #os.environ["MLFLOW_S3_ENDPOINT_URL"] = "http://minio-cli.minio.svc.cluster.local:9000"
+    #os.environ["AWS_ACCESS_KEY_ID"] = "sdg-user"
+    #os.environ["AWS_SECRET_ACCESS_KEY"] = "sdg-password"
     os.environ["MLFLOW_TRACKING_USERNAME"] = "admin"
     os.environ["MLFLOW_TRACKING_PASSWORD"] = "password"
     MLFLOW_TRACKING_URI = "http://mlflow-service.mlflow.svc.cluster.local:5000"
