@@ -213,7 +213,7 @@ def upload_model_mlflow(**kwargs):
     os.environ["AWS_SECRET_ACCESS_KEY"] = "sdg-password"
     os.environ["MLFLOW_TRACKING_USERNAME"] = "admin"
     os.environ["MLFLOW_TRACKING_PASSWORD"] = "password"
-    MLFLOW_TRACKING_URI = "http://mlflow.mlflow.svc.cluster.local:5000"
+    MLFLOW_TRACKING_URI = "http://mlflow-service.mlflow.svc.cluster.local:5000"
 
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     mlflow.set_experiment("random_forest_experiment")
