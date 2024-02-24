@@ -201,10 +201,18 @@ def train_and_save_model(**kwargs):
 
 
 
-    accuracy_corr = model_cor.score(X_test, y_test)
+    y_pred = model_cor.predict(X_test)
+    predictions = [round(value) for value in y_pred]
+    # evaluate predictions
+    accuracy_corr = accuracy_score(y_test, predictions)
     print("Model_corr accuracy", accuracy_corr)
 
-    accuracy_corr_fea = model_cor_sel_fea.score(X_test, y_test)
+
+
+    y_pred = model_cor_sel_fea.predict(X_test)
+    predictions = [round(value) for value in y_pred]
+    # evaluate predictions
+    accuracy_corr_fea = accuracy_score(y_test, predictions)
     print("Model_correlation and feature selection accuracy", accuracy_corr_fea)
 
     with open("/tmp/modelo_XG_corr.pkl", "wb") as f:
