@@ -231,8 +231,11 @@ def upload_model_mlflow(**kwargs):
     # Iniciar un experimento de MLflow
     ti = kwargs['ti']
     accuracy = ti.xcom_pull(task_ids='train_and_save_model')
-    with open("/tmp/modelo_XG.pkl", "rb") as f:
+    with open("/tmp/modelo_XG_corr.pkl", "rb") as f:
         model_cor = pickle.load(f)
+
+    with open("/tmp/modelo_XG_fea.pkl", "rb") as f:
+        model_cor_sel_fea = pickle.load(f)
 
     print("hola")    
     os.environ["MLFLOW_S3_ENDPOINT_URL"] = "http://minio-cli.minio.svc.cluster.local:9000"
