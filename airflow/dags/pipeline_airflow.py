@@ -80,16 +80,16 @@ def preprocess_data():
     # Realiza operaciones con el dataset
     # Por ejemplo, puedes imprimir las primeras filas del dataset
     print(df.head())
-    print("The DataFrame is formed", df.shape[0], "Rows.")
-    print("The DataFrame is formed", df.shape[1], "features.")
+    print("Number of rows", df.shape[0], "filas.")
+    print("Number of features", df.shape[1])
     num_rows_with_nan = df.isna().any(axis=1).sum()
-    print("Number of NaN:", num_rows_with_nan)
+    print("Number of NaN rows:", num_rows_with_nan)
 
 
     
-    print("Modify , for .")
     df = df.apply(lambda x: x.str.replace(',', '.', regex=False) if x.dtype == 'object' else x)
     df = df.apply(pd.to_numeric, errors='ignore')
+    df=df.drop(columns=['Customer_ID'])
 
 
     for columna in df.columns:
@@ -97,28 +97,28 @@ def preprocess_data():
             df[columna] = pd.factorize(df[columna])[0]
 
 
-            
-    # Identificar las columnas que contienen valores faltantes
-    columnas_con_nan = df.columns[df.isnull().any()].tolist()
+                
+    # Identify the columns containing missing values.
+    columns_with_nan = df.columns[df.isnull().any()].tolist()
 
-    # Dividir los datos en dos conjuntos: uno con valores completos y otro con valores faltantes
-    df_con_valores_completos = df.dropna()
-    df_con_valores_faltantes = df[df.isnull().any(axis=1)]
+    # Split the data into two sets: one with complete values and another with missing values.
+    df_without_missing_values = df.dropna()
+    df_with_missing_values = df[df.isnull().any(axis=1)]
 
-    # Separar características y etiquetas para el conjunto con valores completos
-    X_train = df_con_valores_completos.drop(columns=columnas_con_nan)
-    y_train = df_con_valores_completos[columnas_con_nan]
+    # Separate features and labels for the dataset with complete values.
+    X_train = df_without_missing_values.drop(columns=columns_with_nan)
+    y_train = df_without_missing_values[columns_with_nan]
 
-    # Entrenar un modelo de regresión lineal
-    modelo_regresion = LinearRegression()
-    modelo_regresion.fit(X_train, y_train)
+    # Train a linear regression model.
+    model_reg = LinearRegression()
+    model_reg.fit(X_train, y_train)
 
-    # Utilizar el modelo para predecir los valores faltantes en el conjunto con valores faltantes
-    X_test = df_con_valores_faltantes.drop(columns=columnas_con_nan)
-    valores_faltantes_predichos = modelo_regresion.predict(X_test)
+    # Use the model to predict the missing values in the dataset with missing values.
+    X_test = df_with_missing_values.drop(columns=columns_with_nan)
+    predicted_values = model_reg.predict(X_test)
 
-    # Asignar los valores predichos al DataFrame original
-    df.loc[df.isnull().any(axis=1), columnas_con_nan] = valores_faltantes_predichos
+    # Assign the predicted values to the original DataFrame.
+    df.loc[df.isnull().any(axis=1), columns_with_nan] = predicted_values
 
     df.to_csv('/tmp/preprocess-dataset.csv', index=False)
     lock.release()
@@ -132,30 +132,28 @@ def feature_analysis():
 
     # Dividir el conjunto de datos en características (X) y variable objetivo (y)
     df = pd.read_csv('/tmp/preprocess-dataset.csv')
-    print("hola")
-    # Separar las características de la variable objetivo
-    X = df.drop(columns=['churn'])  # características
-    y = df['churn']  # variable objetivo
-    print("hola1")
-    # Estandarizar las características
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-    print("hola2")
-    # Aplicar PCA
-    pca = PCA()
-    X_pca = pca.fit_transform(X_scaled)
 
-    # Identificar las componentes principales que explican la mayor varianza
-    componentes_principales_importantes = pca.components_[:40]  # por ejemplo, selecciona las primeras 5 componentes principales
+    # Calculate the correlation matrix
 
-    # Obtener las cargas de las características en estas componentes principales
-    cargas_caracteristicas = pd.DataFrame(componentes_principales_importantes, columns=X.columns)
-    print("hola3")
-    # Seleccionar las características con las mayores cargas absolutas en las componentes principales
-    selected_features = cargas_caracteristicas.abs().max().nlargest(40).index
+    correlation_matrix = df.corr()
+
+    # Extract the correlations with the churn variable
+    churn_correlation = correlation_matrix['churn'].drop('churn')
+
+    # Sort the correlations by absolute value
+    churn_correlation_sorted = churn_correlation.abs().sort_values(ascending=False)
+
+    corr_target =abs(correlation_matrix['churn'])
+
+    features_high_corr = corr_target[corr_target> 0.00800].index.tolist()
+
+    features_high_corr.remove('churn')
+
+
+    print(len(features_high_corr))
     lock.release()
     print("final")
-    return selected_features.tolist()
+    return features_high_corr
 
 
 
@@ -164,6 +162,8 @@ def train_and_save_model(**kwargs):
     lock.acquire()
     from sklearn.decomposition import PCA
     from sklearn.preprocessing import StandardScaler
+    from xgboost import XGBClassifier
+    from sklearn.metrics import accuracy_score
     ti = kwargs['ti']
     selected_features = ti.xcom_pull(task_ids='feature_analysis')
 
@@ -171,61 +171,86 @@ def train_and_save_model(**kwargs):
     df = pd.read_csv('/tmp/preprocess-dataset.csv')
 
     # Separar las características de la variable objetivo
+    X = df.drop(columns=['churn'])  
+    y = df['churn']  
+    X_train, X_test, y_train, y_test = train_test_split(X[selected_features], y, test_size=0.3, random_state=42)
+
+    model_cor = XGBClassifier(learning_rate=0.5, n_estimators=400, max_depth=7,objective='binary:logistic',
+                    silent=False, nthread=2)
+
+
+    model_cor.fit(X_train, y_train)  
+    importances = model_cor.feature_importances_
+    importances = model_cor.feature_importances_
+    feature_names = X_train.columns.to_list() 
+    feature_importance_df = pd.DataFrame({'Feature': feature_names, 'Importance': importances})
+    feature_importance_df = feature_importance_df.sort_values(by='Importance', ascending=False)
+    
+    threshold = 0.010 # Por ejemplo, puedes elegir un umbral del 10%
+
+    selected_features = feature_importance_df[feature_importance_df['Importance'] > threshold]['Feature'].tolist()
+
     X = df.drop(columns=['churn'])  # características
     y = df['churn']  # variable objetivo
+    X_train, X_test, y_train, y_test = train_test_split(X[selected_features], y, test_size=0.3, random_state=42)
 
-    # Filtrar el DataFrame para incluir solo las características seleccionadas
-    X_selected = X[selected_features]
-    # Dividir el conjunto de datos en conjuntos de entrenamiento y prueba
-    X_train, X_test, y_train, y_test = train_test_split(X_selected, y, test_size=0.2, random_state=42)
-    # Entrenar un Random Forest utilizando solo las características seleccionadas
-    rf = RandomForestClassifier(min_samples_leaf=1)
-    rf.fit(X_train, y_train)
+    model_cor_sel_fea = XGBClassifier(learning_rate=0.5, n_estimators=400, max_depth=7,objective='binary:logistic',
+                    silent=False, nthread=2)
+    
+    model_cor_sel_fea.fit(X_train, y_train)
 
-        # Evaluar el modelo en el conjunto de prueba
-    accuracy = rf.score(X_test, y_test)
-    print("Precisión del modelo:", accuracy)
 
-    with open("/tmp/modelo_rf.pkl", "wb") as f:
-        pickle.dump(rf, f)
+
+    accuracy_corr = model_cor.score(X_test, y_test)
+    print("Model_corr accuracy", accuracy_corr)
+
+    accuracy_corr_fea = model_cor_sel_fea.score(X_test, y_test)
+    print("Model_correlation and feature selection accuracy", accuracy_corr_fea)
+
+    with open("/tmp/modelo_XG_corr.pkl", "wb") as f:
+        pickle.dump(model_cor, f)
+
+    with open("/tmp/modelo_XG_fea.pkl", "wb") as f:
+        pickle.dump(model_cor_sel_fea, f)        
 
     print("finish")
     lock.release()
-    return accuracy
+    return [accuracy_corr,accuracy_corr_fea]
 
 
 def upload_model_mlflow(**kwargs):
     import mlflow
     import pickle
     import os
-    import boto3
     # Iniciar un experimento de MLflow
     ti = kwargs['ti']
     accuracy = ti.xcom_pull(task_ids='train_and_save_model')
-    with open("/tmp/modelo_rf.pkl", "rb") as f:
-        model = pickle.load(f)
+    with open("/tmp/modelo_XG.pkl", "rb") as f:
+        model_cor = pickle.load(f)
 
-    minio_user = "sdg-user"
-    minio_pass = "sdg-password"
     print("hola")    
-    #os.environ["MLFLOW_S3_ENDPOINT_URL"] = "http://minio-cli.minio.svc.cluster.local:9000"
-    #os.environ["AWS_ACCESS_KEY_ID"] = "sdg-user"
-    #os.environ["AWS_SECRET_ACCESS_KEY"] = "sdg-password"
+    os.environ["MLFLOW_S3_ENDPOINT_URL"] = "http://minio-cli.minio.svc.cluster.local:9000"
+    os.environ["AWS_ACCESS_KEY_ID"] = "sdg-user"
+    os.environ["AWS_SECRET_ACCESS_KEY"] = "sdg-password"
     os.environ["MLFLOW_TRACKING_USERNAME"] = "admin"
     os.environ["MLFLOW_TRACKING_PASSWORD"] = "password"
     MLFLOW_TRACKING_URI = "http://mlflow-service.mlflow.svc.cluster.local:5000"
 
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-    mlflow.set_experiment("random_forest_experiment")
+    mlflow.set_experiment("XG-Boost")
     print("hola")
     # Iniciar una corrida de MLflow
     with mlflow.start_run():
-        # Registrar los parámetros y métricas del modelo
         mlflow.log_params({"n_estimators": 100})
-        mlflow.log_metric("accuracy", accuracy)
+        mlflow.log_metric("accuracy", accuracy[0])
+        mlflow.sklearn.log_model(model_cor, "modelo_random_forest")
+
+    with mlflow.start_run():
+        mlflow.log_params({"n_estimators": 100})
+        mlflow.log_metric("accuracy", accuracy[1])
         print("hola")
         # Guardar el modelo
-        mlflow.sklearn.log_model(model, "modelo_random_forest")
+        mlflow.sklearn.log_model(model_cor, "modelo_random_forest")
 
 
 # Definir el DAG
