@@ -237,9 +237,11 @@ def train_and_save_model(**kwargs):
         pickle.dump(model_cor_sel_fea, f)        
 
     print("finish")
-    lock.release()
-    data_dict_json = json.dump([metrics_dict_corr,metrics_dict_corr_with_feature_selection])
-    return data_dict_json
+    with open('/tmp/metrics.json', 'wb') as f:
+        json.dump([metrics_dict_corr, metrics_dict_corr_with_feature_selection], f)
+
+  
+    return 
 
 
 def upload_model_mlflow(**kwargs):
@@ -248,9 +250,10 @@ def upload_model_mlflow(**kwargs):
     import os
     import json
     # Iniciar un experimento de MLflow
-    ti = kwargs['ti']
-    metrics = ti.xcom_pull(task_ids='train_and_save_model')
-    data_list = json.loads(metrics)
+
+    with open('/tmp/metrics.json', 'rb') as f:
+        metrics = pickle.load(f)
+
 
     with open("/tmp/modelo_XG_corr.pkl", "rb") as f:
         model_cor = pickle.load(f)
