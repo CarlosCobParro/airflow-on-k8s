@@ -271,6 +271,7 @@ def upload_model_mlflow(**kwargs):
         mlflow.log_params({"learning_rate": 0.5})
         mlflow.log_params({"n_estimators": 400})
         mlflow.log_params({"max_depth": 7})
+        mlflow.log_input('/tmp/preprocess-dataset.csv')
         mlflow.log_params({"objective": "binary:logistic"})
         mlflow.log_artifact('/tmp/preprocess-dataset.csv')
         for metric_name, metric_value in metrics[0].items():
@@ -283,8 +284,9 @@ def upload_model_mlflow(**kwargs):
         mlflow.log_params({"learning_rate": 0.5})
         mlflow.log_params({"n_estimators": 400})
         mlflow.log_params({"max_depth": 7})
+        mlflow.log_input('/tmp/preprocess-dataset.csv')
         mlflow.log_params({"objective": "binary:logistic"})
-        mlflow.log_artifact('/tmp/preprocess-dataset.csv')
+        #mlflow.log_artifact('/tmp/preprocess-dataset.csv')
         #for metric_name, metric_value in metrics[1].items():
         for metric_name, metric_value in metrics[1].items():
             mlflow.log_metric(metric_name, metric_value)
@@ -299,7 +301,7 @@ default_args = {
     'email_on_failure': False,
     'email_on_retry': False,
     'retries': 1,
-    'retry_delay': timedelta(minutes=5),
+    'retry_delay': timedelta(minutes=2),
 }
 
 dag = DAG(
