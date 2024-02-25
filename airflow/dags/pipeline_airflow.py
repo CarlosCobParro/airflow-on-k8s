@@ -203,12 +203,16 @@ def train_and_save_model(**kwargs):
     feature_importance_df = feature_importance_df.sort_values(by='Importance', ascending=False)
     threshold = 0.010
     selected_features = feature_importance_df[feature_importance_df['Importance'] > threshold]['Feature'].tolist()
-    X = df.drop(columns=['churn'])  # características
-    y = df['churn']  # variable objetivo
+    print("2")
+    X = df.drop(columns=['churn'])  
+    y = df['churn']  
     X_train, X_test, y_train, y_test = train_test_split(X[selected_features], y, test_size=0.3, random_state=42)
     model_cor_sel_fea = XGBClassifier(learning_rate=0.5, n_estimators=400, max_depth=7,objective='binary:logistic',
                     silent=False, nthread=2)
+    
+    print("3")
     model_cor_sel_fea.fit(X_train, y_train)
+
     print("3")
     predictions = model_cor_sel_fea.predict(X_test)
 
