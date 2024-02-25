@@ -217,6 +217,13 @@ def train_and_save_model_corr(**kwargs):
             mlflow.log_metric(metric_name, metric_value)
         
         mlflow.sklearn.log_model(model_cor, "XGBoost_corr")
+        run_id = mlflow.active_run().info.run_id
+        # Especificar la ruta donde se guardó el modelo
+        model_path = os.path.join("runs:/", run_id, "XGBoost_corr")
+
+        # Registrar el modelo con la etiqueta "latest"
+        mlflow.register_model(model_uri=model_path, name="XGBoost_corr")
+
 
     with open("/tmp/modelo_XG_corr.pkl", "wb") as f:
         pickle.dump(model_cor, f)
