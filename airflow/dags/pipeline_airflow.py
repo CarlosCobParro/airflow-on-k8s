@@ -379,5 +379,4 @@ registry_models_op = PythonOperator(
 )
 
 
-# Definir dependencias entre los operadores
 load_data_op  >> preprocess_data_op >> feature_analysis_op>>train_and_save_model_op_corr >>train_and_save_model_corr_fea_op>>registry_models_op
