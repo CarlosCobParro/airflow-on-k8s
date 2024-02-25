@@ -166,6 +166,7 @@ def train_and_save_model_corr(**kwargs):
     from xgboost import XGBClassifier
     from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, roc_auc_score
     import mlflow
+    from mlflow.models.signature import infer_signature
     
     ti = kwargs['ti']
     features_high_corr = ti.xcom_pull(task_ids='feature_analysis')
@@ -197,7 +198,7 @@ def train_and_save_model_corr(**kwargs):
 
     print("1")
     mlflow.set_experiment("XG-Boost-with-correlation")
-    with mlflow.start_run():
+    with mlflow.start_run(run_name="XG-Boost-with-correlation"):
         model_cor.fit(X_train, y_train)  
         predictions = model_cor.predict(X_test)
         metrics_dict_corr = {
@@ -214,6 +215,7 @@ def train_and_save_model_corr(**kwargs):
         mlflow.log_artifact('/tmp/preprocess-dataset.csv')
         for metric_name, metric_value in metrics_dict_corr.items():
             mlflow.log_metric(metric_name, metric_value)
+        model_signature = infer_signature(model_input=X_train,model_output=predictions) 
         mlflow.sklearn.log_model(model_cor, "XGBoost model with Correlation model")
 
     with open("/tmp/modelo_XG_corr.pkl", "wb") as f:
@@ -228,6 +230,7 @@ def train_and_save_model_corr_fea(**kwargs):
     from xgboost import XGBClassifier
     from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, roc_auc_score
     import mlflow
+    from mlflow.models.signature import infer_signature
     ti = kwargs['ti']
     features_high_corr = ti.xcom_pull(task_ids='feature_analysis')
     with open("/tmp/modelo_XG_corr.pkl", "rb") as f:
@@ -240,7 +243,6 @@ def train_and_save_model_corr_fea(**kwargs):
     y = df['churn']  
 
     X_train, X_test, y_train, y_test = train_test_split(X[features_high_corr], y, test_size=0.3, random_state=42)
-
     importances = model_cor.feature_importances_
     feature_names = X_train.columns.to_list() 
     feature_importance_df = pd.DataFrame({'Feature': feature_names, 'Importance': importances})
@@ -267,10 +269,10 @@ def train_and_save_model_corr_fea(**kwargs):
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 
     print("1")
-    mlflow.set_experiment("XG-Boost-with-correlation")
-    with mlflow.start_run():
-        model_cor.fit(X_train[selected_features], y_train)  
-        predictions = model_cor.predict(X_test[selected_features])
+    mlflow.set_experiment("XG-Boost-with-correlation-feature-selections")
+    with mlflow.start_run(run_name="XG-Boost-with-correlation-feature-selections"):
+        model_cor_sel_fea.fit(X_train[selected_features], y_train)  
+        predictions = model_cor_sel_fea.predict(X_test[selected_features])
         metrics_dict_corr = {
             'accuracy': accuracy_score(y_test, predictions),
             'precision': precision_score(y_test, predictions),
@@ -285,72 +287,17 @@ def train_and_save_model_corr_fea(**kwargs):
         mlflow.log_artifact('/tmp/preprocess-dataset.csv')
         for metric_name, metric_value in metrics_dict_corr.items():
             mlflow.log_metric(metric_name, metric_value)
-        mlflow.sklearn.log_model(model_cor, "XGBoost model with Correlation model")
+
+        model_signature = infer_signature(model_input=X_train[selected_features],model_output=predictions)    
+        mlflow.sklearn.log_model(model_cor, "XGBoost model with Correlation model and feature selection",signature=model_signature)
 
 
     with open("/tmp/modelo_XG_fea.pkl", "wb") as f:
         pickle.dump(model_cor_sel_fea, f)        
 
 
-
-
   
-'''
 
-def upload_model_mlflow(**kwargs):
-    import mlflow
-    import pickle
-    import os
-    import json
-    # Iniciar un experimento de MLflow
-
-    ti = kwargs['ti']
-    hyper_param = ti.xcom_pull(task_ids='train_and_save_model')
-
-    with open('/tmp/metrics.json', 'r') as f:
-        metrics = json.load(f)
-
-
-    with open("/tmp/modelo_XG_corr.pkl", "rb") as f:
-        model_cor = pickle.load(f)
-
-    with open("/tmp/modelo_XG_fea.pkl", "rb") as f:
-        model_cor_sel_fea = pickle.load(f)
- 
-    os.environ["MLFLOW_S3_ENDPOINT_URL"] = "http://minio-cli.minio.svc.cluster.local:9000"
-    os.environ["AWS_ACCESS_KEY_ID"] = "sdg-user"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "sdg-password"
-    os.environ["MLFLOW_TRACKING_USERNAME"] = "admin"
-    os.environ["MLFLOW_TRACKING_PASSWORD"] = "password"
-    MLFLOW_TRACKING_URI = "http://mlflow-service.mlflow.svc.cluster.local:5000"
-    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-
-    mlflow.set_experiment("XG-Boost-with-correlation")
-    with mlflow.start_run():
-
-        mlflow.log_params({"learning_rate": hyper_param[0]})
-        mlflow.log_params({"n_estimators": hyper_param[1]})
-        mlflow.log_params({"max_depth": hyper_param[2]})
-        mlflow.log_params({"objective": "binary:logistic"})
-        mlflow.log_artifact('/tmp/preprocess-dataset.csv')
-        for metric_name, metric_value in metrics[0].items():
-            mlflow.log_metric(metric_name, metric_value)
-        mlflow.sklearn.log_model(model_cor, "XGBoost model with Correlation model")
-
-    print("1")
-    mlflow.set_experiment("XG-Boost-with-correlation-and-feature-selection")
-    with mlflow.start_run():
-        mlflow.log_params({"learning_rate": hyper_param[0]})
-        mlflow.log_params({"n_estimators": hyper_param[1]})
-        mlflow.log_params({"max_depth": hyper_param[2]})
-        mlflow.log_params({"objective": "binary:logistic"})
-        #mlflow.log_artifact('/tmp/preprocess-dataset.csv')
-        #for metric_name, metric_value in metrics[1].items():
-        for metric_name, metric_value in metrics[1].items():
-            mlflow.log_metric(metric_name, metric_value)
-        #mlflow.sklearn.log_model(model_cor_sel_fea, "XGBoost model with Correlation and feature selection model")
-    mlflow.sklearn.log_model(model_cor_sel_fea, "XGBoost model with Correlation and feature selection model")
-'''
 # Definir el DAG
 default_args = {
     'owner': 'airflow',
@@ -373,6 +320,7 @@ dag = DAG(
 )
 
 lock = threading.Lock()  
+
 # Definir los operadores del DAG
 load_data_op = PythonOperator(
     task_id='load_data',
