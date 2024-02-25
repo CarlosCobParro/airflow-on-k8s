@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlflow-deployment
+  namespace: mlflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mlflow-deployment
+  template:
+    metadata:
+      labels:
+        app: mlflow-deployment
+    spec:
+      containers:
+      - name: mlflow-deployment
+        #image: larribas/mlflow:latest     # Original MLFLow image (AI team)
+        image: ghcr.io/mlflow/mlflow:latest
+        #image: registry.atosresearch.eu:18489/repository/aida-mlops:mlflow-psycopg2                        # Third option from Yerhard
+        # image: registry.atosresearch.eu:18489/repository/aida-mlops:mlflow-psycopg2
+        imagePullPolicy: Always
+        command: ["/bin/bash"]
+        args: ["-c", "pip install psycopg2-binary; mlflow server --app-name basic-auth --host 0.0.0.0 --port 5000 --backend-store-uri postgresql://sdg-user:sdg-password@mlflow-postgres-service.mlflow.svc.cluster.local:5432/mlflow-postgres --default-artifact-root s3://mlflow/ --workers 2"]
+        envFrom:
+            - secretRef:
+                name: mlflow-secret
+        ports:
+        - name: http
+          containerPort: 5000
+          protocol: TCP
+---
