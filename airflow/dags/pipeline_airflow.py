@@ -54,8 +54,6 @@ def load_data():
 
     path_to_data="/tmp/dataset.csv"
 
-
-
     if check_csv(path_to_data):
         print(f"The file {path_to_data} exists and it is a CSV file.")
     else:
@@ -73,18 +71,15 @@ def preprocess_data():
 
     import pandas as pd
     from sklearn.linear_model import LinearRegression
-    # Ruta del archivo en el contenedor de Airflow
+
     path = '/tmp/dataset.csv'
     df = pd.read_csv(path, sep=';')
 
-    # Realiza operaciones con el dataset
-    # Por ejemplo, puedes imprimir las primeras filas del dataset
     print(df.head())
     print("Number of rows", df.shape[0], "filas.")
     print("Number of features", df.shape[1])
     num_rows_with_nan = df.isna().any(axis=1).sum()
     print("Number of NaN rows:", num_rows_with_nan)
-
 
     
     df = df.apply(lambda x: x.str.replace(',', '.', regex=False) if x.dtype == 'object' else x)
@@ -93,7 +88,7 @@ def preprocess_data():
 
 
     for columna in df.columns:
-        if df[columna].dtype == 'object':  # Verificar si la columna contiene valores de tipo string
+        if df[columna].dtype == 'object':  
             df[columna] = pd.factorize(df[columna])[0]
 
 
@@ -130,29 +125,21 @@ def feature_analysis():
     from sklearn.decomposition import PCA
     from sklearn.preprocessing import StandardScaler
 
-    # Dividir el conjunto de datos en características (X) y variable objetivo (y)
     df = pd.read_csv('/tmp/preprocess-dataset.csv')
 
     # Calculate the correlation matrix
-
     correlation_matrix = df.corr()
-
     # Extract the correlations with the churn variable
     churn_correlation = correlation_matrix['churn'].drop('churn')
-
     # Sort the correlations by absolute value
     churn_correlation_sorted = churn_correlation.abs().sort_values(ascending=False)
-
     corr_target =abs(correlation_matrix['churn'])
-
     features_high_corr = corr_target[corr_target> 0.00800].index.tolist()
-
     features_high_corr.remove('churn')
 
 
     print(len(features_high_corr))
     lock.release()
-    print("final")
     return features_high_corr
 
 
@@ -222,6 +209,11 @@ def train_and_save_model_corr_fea(**kwargs):
     with open("/tmp/modelo_XG_corr.pkl", "rb") as f:
         model_cor = pickle.load(f)
 
+    learning_rate = 0.6
+    n_estimators = 400
+    max_depth = 7
+    nthread = 2
+
     df = pd.read_csv('/tmp/preprocess-dataset.csv')
 
     # Separar las características de la variable objetivo
@@ -237,14 +229,8 @@ def train_and_save_model_corr_fea(**kwargs):
     threshold = 0.010
     selected_features = feature_importance_df[feature_importance_df['Importance'] > threshold]['Feature'].tolist()
 
-    learning_rate = 0.6
-    n_estimators = 400
-    max_depth = 7
-    nthread = 2
-
     model_cor_sel_fea = XGBClassifier(learning_rate=learning_rate, n_estimators=n_estimators, max_depth=max_depth,objective='binary:logistic',
                     silent=False, nthread=nthread)
-
 
     model_cor_sel_fea.fit(X_train[selected_features], y_train)  
     predictions = model_cor_sel_fea.predict(X_test[selected_features])
@@ -260,7 +246,6 @@ def train_and_save_model_corr_fea(**kwargs):
         "n_estimators": n_estimators,
         "max_depth": max_depth,
         "objective": "binary:logistic",
-
     }
 
     with open("/tmp/modelo_XG_fea.pkl", "wb") as f:
@@ -274,11 +259,13 @@ def registry_models(**kwargs):
     ti = kwargs['ti']
     metrics_dict_corr, params_dict_corr= ti.xcom_pull(task_ids='train_and_save_model_corr_fea')
 
+    #Load models
     with open("/tmp/modelo_XG_corr.pkl", "rb") as f:
         model_cor = pickle.load(f)
     with open("/tmp/modelo_XG_fea.pkl", "rb") as f:
         model_cor_sel_fea = pickle.load(f)
 
+    #MlFlow values
     os.environ["MLFLOW_S3_ENDPOINT_URL"] = "http://minio-cli.minio.svc.cluster.local:9000"
     os.environ["AWS_ACCESS_KEY_ID"] = "sdg-user"
     os.environ["AWS_SECRET_ACCESS_KEY"] = "sdg-password"
@@ -288,6 +275,7 @@ def registry_models(**kwargs):
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 
 
+    ## Correlation model with feature selection
     mlflow.set_experiment("XG-Boost-with-correlation-feature-selections")
     with mlflow.start_run(run_name="XG-Boost-with-correlation-feature-selections"):
         for metric_name, metric_value in metrics_dict_corr.items():
@@ -303,6 +291,8 @@ def registry_models(**kwargs):
         mlflow.register_model(model_uri=model_path, name="XGBoost_corr_feasel")    
 
 
+
+    ## Correlation model
     ti = kwargs['ti']
     metrics_dict_corr, params_dict_corr= ti.xcom_pull(task_ids='train_and_save_model_corr')
 
