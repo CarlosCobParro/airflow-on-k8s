@@ -210,13 +210,11 @@ def train_and_save_model(**kwargs):
     model_cor_sel_fea = XGBClassifier(learning_rate=0.5, n_estimators=400, max_depth=7,objective='binary:logistic',
                     silent=False, nthread=2)
     
-    print("3")
-    model_cor_sel_fea.fit(X_train, y_train)
 
-    print("3")
+    model_cor_sel_fea.fit(X_train, y_train)
     predictions = model_cor_sel_fea.predict(X_test)
 
-
+    print("3")
     # evaluate predictions
     accuracy_corr_fea = accuracy_score(y_test, predictions)
     print("Model_correlation and feature selection accuracy", accuracy_corr_fea)
