@@ -17,7 +17,7 @@ This repository is designed for a code test with the aim of deploying Apache Air
 
 This architecture outlines a sophisticated setup for orchestrating machine learning (ML) workflows on Amazon EKS, leveraging several key technologies:
 
-![Architecture Diagram](figures/architecture.png)
+![Architecture Diagram](figures/architecture.PNG)
 
 
 
