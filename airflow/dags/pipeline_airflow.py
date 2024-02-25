@@ -237,7 +237,7 @@ def train_and_save_model(**kwargs):
         pickle.dump(model_cor_sel_fea, f)        
 
     print("finish")
-    with open('/tmp/metrics.json', 'wb') as f:
+    with open('/tmp/metrics.json', 'w') as f:
         json.dump([metrics_dict_corr, metrics_dict_corr_with_feature_selection], f)
 
   
