@@ -296,8 +296,11 @@ def train_and_save_model_corr_fea(**kwargs):
             mlflow.log_metric(metric_name, metric_value)
 
         model_signature = infer_signature(model_input=X_train[selected_features],model_output=predictions)    
-        mlflow.sklearn.log_model(model_cor, "XGBoost_corr_feasel",signature=model_signature)
-
+        mlflow.sklearn.log_model(model_cor_sel_fea, "XGBoost_corr_feasel",signature=model_signature)
+        
+        run_id = mlflow.active_run().info.run_id
+        model_path = os.path.join("runs:/", run_id, "XGBoost_corr_feasel")
+        mlflow.register_model(model_uri=model_path, name="XGBoost_corr_feasel")       
 
     with open("/tmp/modelo_XG_fea.pkl", "wb") as f:
         pickle.dump(model_cor_sel_fea, f)        
