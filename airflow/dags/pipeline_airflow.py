@@ -215,8 +215,8 @@ def train_and_save_model_corr(**kwargs):
         mlflow.log_artifact('/tmp/preprocess-dataset.csv')
         for metric_name, metric_value in metrics_dict_corr.items():
             mlflow.log_metric(metric_name, metric_value)
-        model_signature = infer_signature(model_input=X_train,model_output=predictions) 
-        mlflow.sklearn.log_model(model_cor, "XGBoost model with Correlation model")
+        
+        mlflow.sklearn.log_model(model_cor, "XGBoost_corr")
 
     with open("/tmp/modelo_XG_corr.pkl", "wb") as f:
         pickle.dump(model_cor, f)
@@ -289,7 +289,7 @@ def train_and_save_model_corr_fea(**kwargs):
             mlflow.log_metric(metric_name, metric_value)
 
         model_signature = infer_signature(model_input=X_train[selected_features],model_output=predictions)    
-        mlflow.sklearn.log_model(model_cor, "XGBoost model with Correlation model and feature selection",signature=model_signature)
+        mlflow.sklearn.log_model(model_cor, "XGBoost_corr_feasel",signature=model_signature)
 
 
     with open("/tmp/modelo_XG_fea.pkl", "wb") as f:
