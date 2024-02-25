@@ -165,6 +165,8 @@ def train_and_save_model(**kwargs):
     from sklearn.preprocessing import StandardScaler
     from xgboost import XGBClassifier
     from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, roc_auc_score
+    import mlflow
+    
     ti = kwargs['ti']
     selected_features = ti.xcom_pull(task_ids='feature_analysis')
 
@@ -278,8 +280,9 @@ def upload_model_mlflow(**kwargs):
     MLFLOW_TRACKING_URI = "http://mlflow-service.mlflow.svc.cluster.local:5000"
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 
-    mlflow.set_experiment("XG-Boost-with-correlation")
+    #mlflow.set_experiment("XG-Boost-with-correlation")
     with mlflow.start_run():
+
         mlflow.log_params({"learning_rate": hyper_param[0]})
         mlflow.log_params({"n_estimators": hyper_param[1]})
         mlflow.log_params({"max_depth": hyper_param[2]})
@@ -287,10 +290,10 @@ def upload_model_mlflow(**kwargs):
         mlflow.log_artifact('/tmp/preprocess-dataset.csv')
         for metric_name, metric_value in metrics[0].items():
             mlflow.log_metric(metric_name, metric_value)
-        mlflow.sklearn.log_model(model_cor, "XGBoost model with Correlation")
+        mlflow.sklearn.log_model(model_cor, "XGBoost model with Correlation model")
 
     print("1")
-    mlflow.set_experiment("XG-Boost-with-correlation-and-feature-selection")
+    #mlflow.set_experiment("XG-Boost-with-correlation-and-feature-selection")
     with mlflow.start_run():
         mlflow.log_params({"learning_rate": hyper_param[0]})
         mlflow.log_params({"n_estimators": hyper_param[1]})
@@ -300,8 +303,8 @@ def upload_model_mlflow(**kwargs):
         #for metric_name, metric_value in metrics[1].items():
         for metric_name, metric_value in metrics[1].items():
             mlflow.log_metric(metric_name, metric_value)
-        mlflow.sklearn.log_model(model_cor_sel_fea, "XGBoost model with Correlation and feature selection")
-
+        #mlflow.sklearn.log_model(model_cor_sel_fea, "XGBoost model with Correlation and feature selection model")
+    mlflow.sklearn.log_model(model_cor_sel_fea, "XGBoost model with Correlation and feature selection model")
 
 # Definir el DAG
 default_args = {
