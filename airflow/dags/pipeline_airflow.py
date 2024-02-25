@@ -191,7 +191,6 @@ def train_and_save_model(**kwargs):
         'precision': precision_score(y_test, predictions),
         'recall': recall_score(y_test, predictions),
         'f1': f1_score(y_test, predictions),
-        'conf_matrix': confusion_matrix(y_test, predictions),
         'roc_auc': roc_auc_score(y_test, predictions)
     }
 
@@ -225,7 +224,6 @@ def train_and_save_model(**kwargs):
         'precision': precision_score(y_test, predictions),
         'recall': recall_score(y_test, predictions),
         'f1': f1_score(y_test, predictions),
-        'conf_matrix': confusion_matrix(y_test, predictions),
         'roc_auc': roc_auc_score(y_test, predictions)
     }
 
