@@ -277,6 +277,7 @@ def upload_model_mlflow(**kwargs):
             mlflow.log_metric(metric_name, metric_value)
         mlflow.sklearn.log_model(model_cor, "XGBoost model with Correlation")
 
+    print("1")
     mlflow.set_experiment("XG-Boost-with-correlation")
     with mlflow.start_run():
         mlflow.log_params({"learning_rate": 0.5})
@@ -285,7 +286,8 @@ def upload_model_mlflow(**kwargs):
         mlflow.log_params({"objective": "binary:logistic"})
         mlflow.log_artifact('/tmp/preprocess-dataset.csv')
         #for metric_name, metric_value in metrics[1].items():
-        mlflow.log_metric(metrics[1])
+        for metric_name, metric_value in metrics[1].items():
+            mlflow.log_metric(metric_name, metric_value)
         mlflow.sklearn.log_model(model_cor_sel_fea, "XGBoost model with Correlation and feature selection")
 
 
