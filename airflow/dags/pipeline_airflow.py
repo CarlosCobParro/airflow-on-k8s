@@ -278,7 +278,7 @@ def upload_model_mlflow(**kwargs):
         mlflow.sklearn.log_model(model_cor, "XGBoost model with Correlation")
 
     print("1")
-    mlflow.set_experiment("XG-Boost-with-correlation")
+    mlflow.set_experiment("XG-Boost-with-correlation-and-feature-selection")
     with mlflow.start_run():
         mlflow.log_params({"learning_rate": 0.5})
         mlflow.log_params({"n_estimators": 400})
