@@ -176,8 +176,13 @@ def train_and_save_model(**kwargs):
     y = df['churn']  
     X_train, X_test, y_train, y_test = train_test_split(X[selected_features], y, test_size=0.3, random_state=42)
 
-    model_cor = XGBClassifier(learning_rate=0.5, n_estimators=400, max_depth=7,objective='binary:logistic',
-                    silent=False, nthread=2)
+    learning_rate = 0.6
+    n_estimators = 400
+    max_depth = 7
+    nthread = 2
+
+    model_cor = XGBClassifier(learning_rate=learning_rate, n_estimators=n_estimators, max_depth=max_depth,objective='binary:logistic',
+                    silent=False, nthread=nthread)
 
     print("1")
     model_cor.fit(X_train, y_train)  
@@ -207,8 +212,8 @@ def train_and_save_model(**kwargs):
     X = df.drop(columns=['churn'])  
     y = df['churn']  
     X_train, X_test, y_train, y_test = train_test_split(X[selected_features], y, test_size=0.3, random_state=42)
-    model_cor_sel_fea = XGBClassifier(learning_rate=0.5, n_estimators=400, max_depth=7,objective='binary:logistic',
-                    silent=False, nthread=2)
+    model_cor_sel_fea = XGBClassifier(learning_rate=learning_rate, n_estimators=n_estimators, max_depth=max_depth,objective='binary:logistic',
+                    silent=False, nthread=nthread)
     
 
     model_cor_sel_fea.fit(X_train, y_train)
@@ -238,6 +243,10 @@ def train_and_save_model(**kwargs):
     with open('/tmp/metrics.json', 'w') as f:
         json.dump([metrics_dict_corr, metrics_dict_corr_with_feature_selection], f)
 
+
+  
+    return [learning_rate,n_estimators,max_depth,nthread]
+
   
 
 
@@ -247,6 +256,9 @@ def upload_model_mlflow(**kwargs):
     import os
     import json
     # Iniciar un experimento de MLflow
+
+    ti = kwargs['ti']
+    hyper_param = ti.xcom_pull(task_ids='train_and_save_model')
 
     with open('/tmp/metrics.json', 'r') as f:
         metrics = json.load(f)
@@ -268,9 +280,9 @@ def upload_model_mlflow(**kwargs):
 
     mlflow.set_experiment("XG-Boost-with-correlation")
     with mlflow.start_run():
-        mlflow.log_params({"learning_rate": 0.5})
-        mlflow.log_params({"n_estimators": 400})
-        mlflow.log_params({"max_depth": 7})
+        mlflow.log_params({"learning_rate": hyper_param[0]})
+        mlflow.log_params({"n_estimators": hyper_param[1]})
+        mlflow.log_params({"max_depth": hyper_param[2]})
         mlflow.log_params({"objective": "binary:logistic"})
         mlflow.log_artifact('/tmp/preprocess-dataset.csv')
         for metric_name, metric_value in metrics[0].items():
@@ -280,9 +292,9 @@ def upload_model_mlflow(**kwargs):
     print("1")
     mlflow.set_experiment("XG-Boost-with-correlation-and-feature-selection")
     with mlflow.start_run():
-        mlflow.log_params({"learning_rate": 0.5})
-        mlflow.log_params({"n_estimators": 400})
-        mlflow.log_params({"max_depth": 7})
+        mlflow.log_params({"learning_rate": hyper_param[0]})
+        mlflow.log_params({"n_estimators": hyper_param[1]})
+        mlflow.log_params({"max_depth": hyper_param[2]})
         mlflow.log_params({"objective": "binary:logistic"})
         #mlflow.log_artifact('/tmp/preprocess-dataset.csv')
         #for metric_name, metric_value in metrics[1].items():
