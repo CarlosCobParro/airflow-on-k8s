@@ -1,20 +1,43 @@
-# How to deploy mlflow in a kubernetes cluster
+# MLflow Deployment on Kubernetes
 
-Please read the .env file in order to parametrize the deployment
-Once variables have been set in the .env file then the deployment can be done deploying manifest by manifest.
-All manifests are sorted based on their order of deployment (000.., 010.., 025...).
+Deploy MLflow in your Kubernetes cluster by following these steps. This guide assumes you have a set of Kubernetes manifests in the `k8s-manifest/mlflow` directory for deploying MLflow.
 
-To deploy a manifest (manifest `045-ingress-route.yaml` for example) please execute:
-````
-$ source .env; envsubst < 045-ingress-route.yaml | kubectl apply -f - 
-````
-You need to execute this command per manifest.
+## Prerequisites
 
-The last 3 manifests (035, 040, 045) are optional, since 035 & 040 are used to integrate mlflow in kubeflow (optional) and 045 is used to create an ingress-route if a traefik proxy server has been deployed previously.
+- Kubernetes cluster
+- kubectl configured to interact with your cluster
 
-So you can deploy from 000 to 030 (both included) and you could access mlflow by portforwarding:
-````
-$ kubectl port-forward svc/mlflow-service -n <NAMESPACE_NAME> 5000:5000
-````
-And the access `http://localhost:5000` and a user and password are required (basic auth pop up).
-If so, by default username=admin and password=password. You can change this password by using mlflow api -> `https://mlflow.org/docs/latest/auth/python-api.html#mlflow.server.auth.client.AuthServiceClient.update_user_password`
+## Deployment Steps
+
+### Create the Namespace
+
+First, create a namespace specifically for MLflow:
+
+```shell
+kubectl create namespace mlflow
+```
+
+### Deploy MLflow Manifests
+
+Deploy the MLflow Kubernetes manifests to your cluster to set up MLflow. Apply these manifests within the dedicated namespace you've created:
+
+```shell
+kubectl apply -f k8s-manifests/mlflow/ -n mlflow
+```
+
+Adjust the command to point to the correct path where your MLflow manifests are stored.
+
+### Verify the Deployment
+
+Ensure your MLflow deployment is successful and operational:
+```shell
+kubectl get pods -n mlflow
+
+```
+
+Check the running pods to confirm MLflow components are active. Additionally, inspect the exposed services:
+
+```shell
+kubectl get svc -n mlflow
+
+```
