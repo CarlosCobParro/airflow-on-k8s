@@ -1,13 +1,4 @@
-# prometheusflow deployment using Helm
 
-
-In order to deploy prometheusflow we are going to use the helm installer. There are several ways to install in your machine, for this tutorial we've used from script.
-
-```shell
-    $ curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
-    $ chmod 700 get_helm.sh
-    $ ./get_helm.sh
-```
 ## Deploying Airflow on Kubernetes with Helm
 
 This guide walks you through the process of deploying Apache Airflow on a Kubernetes cluster using Helm.
