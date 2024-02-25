@@ -230,7 +230,7 @@ def train_and_save_model_corr_fea(**kwargs):
     import mlflow
     ti = kwargs['ti']
     features_high_corr = ti.xcom_pull(task_ids='feature_analysis')
-    with open("/tmp/modelo_XG_corr.pkl", "wb") as f:
+    with open("/tmp/modelo_XG_corr.pkl", "rb") as f:
         model_cor = pickle.load(f)
 
     df = pd.read_csv('/tmp/preprocess-dataset.csv')
