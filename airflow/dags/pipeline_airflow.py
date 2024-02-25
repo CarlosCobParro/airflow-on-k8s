@@ -160,6 +160,7 @@ def feature_analysis():
 # Función para entrenar y guardar el modelo
 def train_and_save_model(**kwargs):
     lock.acquire()
+    import json
     from sklearn.decomposition import PCA
     from sklearn.preprocessing import StandardScaler
     from xgboost import XGBClassifier
@@ -237,17 +238,20 @@ def train_and_save_model(**kwargs):
 
     print("finish")
     lock.release()
-    data_dict = [metrics_dict_corr,metrics_dict_corr_with_feature_selection]
-    return data_dict
+    data_dict_json = json.dump([metrics_dict_corr,metrics_dict_corr_with_feature_selection])
+    return data_dict_json
 
 
 def upload_model_mlflow(**kwargs):
     import mlflow
     import pickle
     import os
+    import json
     # Iniciar un experimento de MLflow
     ti = kwargs['ti']
     metrics = ti.xcom_pull(task_ids='train_and_save_model')
+    data_list = json.loads(metrics)
+
     with open("/tmp/modelo_XG_corr.pkl", "rb") as f:
         model_cor = pickle.load(f)
 
