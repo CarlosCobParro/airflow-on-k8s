@@ -241,7 +241,6 @@ def train_and_save_model(**kwargs):
         json.dump([metrics_dict_corr, metrics_dict_corr_with_feature_selection], f)
 
   
-    return 
 
 
 def upload_model_mlflow(**kwargs):
