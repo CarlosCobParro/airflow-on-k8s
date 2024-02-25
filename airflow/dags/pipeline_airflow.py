@@ -179,7 +179,7 @@ def train_and_save_model_corr(**kwargs):
     y = df['churn']  
     X_train, X_test, y_train, y_test = train_test_split(X[features_high_corr], y, test_size=0.3, random_state=42)
 
-    learning_rate = 0.6
+    learning_rate = 0.5
     n_estimators = 400
     max_depth = 7
     nthread = 2
@@ -187,47 +187,26 @@ def train_and_save_model_corr(**kwargs):
     model_cor = XGBClassifier(learning_rate=learning_rate, n_estimators=n_estimators, max_depth=max_depth,objective='binary:logistic',
                     silent=False, nthread=nthread)
 
+    model_cor.fit(X_train, y_train)  
+    predictions = model_cor.predict(X_test)
+    metrics_dict_corr = {
+        'accuracy': accuracy_score(y_test, predictions),
+        'precision': precision_score(y_test, predictions),
+        'recall': recall_score(y_test, predictions),
+        'f1': f1_score(y_test, predictions),
+        'roc_auc': roc_auc_score(y_test, predictions)
+    }
+    params_dict_corr = {
+        'learning_rate':learning_rate,
+        "n_estimators": n_estimators,
+        "max_depth": max_depth,
+        "objective": "binary:logistic",
 
-    os.environ["MLFLOW_S3_ENDPOINT_URL"] = "http://minio-cli.minio.svc.cluster.local:9000"
-    os.environ["AWS_ACCESS_KEY_ID"] = "sdg-user"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "sdg-password"
-    os.environ["MLFLOW_TRACKING_USERNAME"] = "admin"
-    os.environ["MLFLOW_TRACKING_PASSWORD"] = "password"
-    MLFLOW_TRACKING_URI = "http://mlflow-service.mlflow.svc.cluster.local:5000"
-    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-
-    print("1")
-    mlflow.set_experiment("XG-Boost-with-correlation")
-    with mlflow.start_run(run_name="XG-Boost-with-correlation"):
-        model_cor.fit(X_train, y_train)  
-        predictions = model_cor.predict(X_test)
-        metrics_dict_corr = {
-            'accuracy': accuracy_score(y_test, predictions),
-            'precision': precision_score(y_test, predictions),
-            'recall': recall_score(y_test, predictions),
-            'f1': f1_score(y_test, predictions),
-            'roc_auc': roc_auc_score(y_test, predictions)
-        }
-        mlflow.log_params({"learning_rate": learning_rate})
-        mlflow.log_params({"n_estimators": n_estimators})
-        mlflow.log_params({"max_depth": max_depth})
-        mlflow.log_params({"objective": "binary:logistic"})
-        mlflow.log_artifact('/tmp/preprocess-dataset.csv')
-        for metric_name, metric_value in metrics_dict_corr.items():
-            mlflow.log_metric(metric_name, metric_value)
-        
-        mlflow.sklearn.log_model(model_cor, "XGBoost_corr")
-        run_id = mlflow.active_run().info.run_id
-        # Especificar la ruta donde se guardó el modelo
-        model_path = os.path.join("runs:/", run_id, "XGBoost_corr")
-
-        # Registrar el modelo con la etiqueta "latest"
-        mlflow.register_model(model_uri=model_path, name="XGBoost_corr")
-
+    }
 
     with open("/tmp/modelo_XG_corr.pkl", "wb") as f:
         pickle.dump(model_cor, f)
-    return features_high_corr
+    return [metrics_dict_corr,params_dict_corr]
 
 def train_and_save_model_corr_fea(**kwargs):
     lock.acquire()
@@ -236,10 +215,10 @@ def train_and_save_model_corr_fea(**kwargs):
     from sklearn.preprocessing import StandardScaler
     from xgboost import XGBClassifier
     from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, roc_auc_score
-    import mlflow
-    from mlflow.models.signature import infer_signature
+
     ti = kwargs['ti']
     features_high_corr = ti.xcom_pull(task_ids='feature_analysis')
+
     with open("/tmp/modelo_XG_corr.pkl", "rb") as f:
         model_cor = pickle.load(f)
 
@@ -267,6 +246,39 @@ def train_and_save_model_corr_fea(**kwargs):
                     silent=False, nthread=nthread)
 
 
+    model_cor_sel_fea.fit(X_train[selected_features], y_train)  
+    predictions = model_cor_sel_fea.predict(X_test[selected_features])
+    metrics_dict_corr = {
+        'accuracy': accuracy_score(y_test, predictions),
+        'precision': precision_score(y_test, predictions),
+        'recall': recall_score(y_test, predictions),
+        'f1': f1_score(y_test, predictions),
+        'roc_auc': roc_auc_score(y_test, predictions),
+    }
+    params_dict_corr = {
+        'learning_rate':learning_rate,
+        "n_estimators": n_estimators,
+        "max_depth": max_depth,
+        "objective": "binary:logistic",
+
+    }
+
+    with open("/tmp/modelo_XG_fea.pkl", "wb") as f:
+        pickle.dump(model_cor_sel_fea, f)      
+    return [metrics_dict_corr,params_dict_corr]  
+
+def registry_models(**kwargs):
+    import mlflow
+    from mlflow.models.signature import infer_signature
+
+    ti = kwargs['ti']
+    metrics_dict_corr, params_dict_corr= ti.xcom_pull(task_ids='train_and_save_model_corr_fea')
+
+    with open("/tmp/modelo_XG_corr.pkl", "rb") as f:
+        model_cor = pickle.load(f)
+    with open("/tmp/modelo_XG_fea.pkl", "rb") as f:
+        model_cor_sel_fea = pickle.load(f)
+
     os.environ["MLFLOW_S3_ENDPOINT_URL"] = "http://minio-cli.minio.svc.cluster.local:9000"
     os.environ["AWS_ACCESS_KEY_ID"] = "sdg-user"
     os.environ["AWS_SECRET_ACCESS_KEY"] = "sdg-password"
@@ -275,38 +287,39 @@ def train_and_save_model_corr_fea(**kwargs):
     MLFLOW_TRACKING_URI = "http://mlflow-service.mlflow.svc.cluster.local:5000"
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 
-    print("1")
+
     mlflow.set_experiment("XG-Boost-with-correlation-feature-selections")
     with mlflow.start_run(run_name="XG-Boost-with-correlation-feature-selections"):
-        model_cor_sel_fea.fit(X_train[selected_features], y_train)  
-        predictions = model_cor_sel_fea.predict(X_test[selected_features])
-        metrics_dict_corr = {
-            'accuracy': accuracy_score(y_test, predictions),
-            'precision': precision_score(y_test, predictions),
-            'recall': recall_score(y_test, predictions),
-            'f1': f1_score(y_test, predictions),
-            'roc_auc': roc_auc_score(y_test, predictions)
-        }
-        mlflow.log_params({"learning_rate": learning_rate})
-        mlflow.log_params({"n_estimators": n_estimators})
-        mlflow.log_params({"max_depth": max_depth})
-        mlflow.log_params({"objective": "binary:logistic"})
-        mlflow.log_artifact('/tmp/preprocess-dataset.csv')
         for metric_name, metric_value in metrics_dict_corr.items():
             mlflow.log_metric(metric_name, metric_value)
 
-        model_signature = infer_signature(model_input=X_train[selected_features],model_output=predictions)    
-        mlflow.sklearn.log_model(model_cor_sel_fea, "XGBoost_corr_feasel",signature=model_signature)
+        for param_name, param_value in params_dict_corr.items():
+            mlflow.log_metric(param_name, param_value)
+
+        mlflow.sklearn.log_model(model_cor_sel_fea, "XGBoost_corr_feasel")
         
         run_id = mlflow.active_run().info.run_id
         model_path = os.path.join("runs:/", run_id, "XGBoost_corr_feasel")
-        mlflow.register_model(model_uri=model_path, name="XGBoost_corr_feasel")       
-
-    with open("/tmp/modelo_XG_fea.pkl", "wb") as f:
-        pickle.dump(model_cor_sel_fea, f)        
+        mlflow.register_model(model_uri=model_path, name="XGBoost_corr_feasel")    
 
 
-  
+    ti = kwargs['ti']
+    metrics_dict_corr, params_dict_corr= ti.xcom_pull(task_ids='train_and_save_model_corr')
+
+    mlflow.set_experiment("XG-Boost-with-correlation")
+    with mlflow.start_run(run_name="XG-Boost-with-correlation"):
+        for metric_name, metric_value in metrics_dict_corr.items():
+            mlflow.log_metric(metric_name, metric_value)
+
+        for param_name, param_value in params_dict_corr.items():
+            mlflow.log_metric(param_name, param_value)
+
+        mlflow.sklearn.log_model(model_cor, "XGBoost_corr")
+        
+        run_id = mlflow.active_run().info.run_id
+        model_path = os.path.join("runs:/", run_id, "XGBoost_corr")
+        mlflow.register_model(model_uri=model_path, name="XGBoost_corr")    
+
 
 # Definir el DAG
 default_args = {
@@ -368,6 +381,13 @@ train_and_save_model_corr_fea_op = PythonOperator(
     dag=dag,
 )
 
+registry_models_op = PythonOperator(
+    task_id='registry_models',
+    python_callable=registry_models,
+    provide_context=True,
+    dag=dag,
+)
+
 
 # Definir dependencias entre los operadores
-load_data_op  >> preprocess_data_op >> feature_analysis_op>>train_and_save_model_op_corr >>train_and_save_model_corr_fea_op
+load_data_op  >> preprocess_data_op >> feature_analysis_op>>train_and_save_model_op_corr >>train_and_save_model_corr_fea_op>registry_models_op
