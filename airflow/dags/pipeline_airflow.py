@@ -35,7 +35,7 @@ def load_data():
             status_forcelist=[500, 502, 503, 504]
             )
         )
-    minio_url = "minio-cli.minio.svc.cluster.local:9000" #Cambiar por valor de dentro del k8s
+    minio_url = "minio-cli.minio.svc.cluster.local:9000" 
     minio_user = "sdg-user"
     minio_pass = "sdg-password"
     MINIO_BUCKET = "sdg"
@@ -57,9 +57,9 @@ def load_data():
 
 
     if check_csv(path_to_data):
-        print(f"El archivo {path_to_data} existe y es un archivo CSV.")
+        print(f"The file {path_to_data} exists and it is a CSV file.")
     else:
-        print(f"El archivo {path_to_data} no existe o no es un archivo CSV.")
+        print(f"The file {path_to_data} does not exist or is not a CSV file.")
         Path(path_to_data).parent.mkdir(parents=True, exist_ok=True)
         
         minioClient.fget_object(MINIO_BUCKET, dataset, path_to_data)
@@ -163,7 +163,7 @@ def train_and_save_model(**kwargs):
     from sklearn.decomposition import PCA
     from sklearn.preprocessing import StandardScaler
     from xgboost import XGBClassifier
-    from sklearn.metrics import accuracy_score
+    from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, roc_auc_score
     ti = kwargs['ti']
     selected_features = ti.xcom_pull(task_ids='feature_analysis')
 
@@ -180,38 +180,51 @@ def train_and_save_model(**kwargs):
 
 
     model_cor.fit(X_train, y_train)  
-
-
     y_pred = model_cor.predict(X_test)
     predictions = [round(value) for value in y_pred]
     # evaluate predictions
     accuracy_corr = accuracy_score(y_test, predictions)
     print("Model_corr accuracy", accuracy_corr)
+    metrics_dict_corr = {
+        'accuracy': accuracy_score(y_test, predictions),
+        'precision': precision_score(y_test, predictions),
+        'recall': recall_score(y_test, predictions),
+        'f1': f1_score(y_test, predictions),
+        'conf_matrix': confusion_matrix(y_test, predictions),
+        'roc_auc': roc_auc_score(y_test, predictions)
+    }
+
+
 
     importances = model_cor.feature_importances_
     importances = model_cor.feature_importances_
     feature_names = X_train.columns.to_list() 
     feature_importance_df = pd.DataFrame({'Feature': feature_names, 'Importance': importances})
     feature_importance_df = feature_importance_df.sort_values(by='Importance', ascending=False)
-    
-    threshold = 0.010 # Por ejemplo, puedes elegir un umbral del 10%
-
+    threshold = 0.010
     selected_features = feature_importance_df[feature_importance_df['Importance'] > threshold]['Feature'].tolist()
-
     X = df.drop(columns=['churn'])  # características
     y = df['churn']  # variable objetivo
     X_train, X_test, y_train, y_test = train_test_split(X[selected_features], y, test_size=0.3, random_state=42)
-
     model_cor_sel_fea = XGBClassifier(learning_rate=0.5, n_estimators=400, max_depth=7,objective='binary:logistic',
                     silent=False, nthread=2)
-    
     model_cor_sel_fea.fit(X_train, y_train)
 
     y_pred = model_cor_sel_fea.predict(X_test)
     predictions = [round(value) for value in y_pred]
+
     # evaluate predictions
     accuracy_corr_fea = accuracy_score(y_test, predictions)
     print("Model_correlation and feature selection accuracy", accuracy_corr_fea)
+
+    metrics_dict_corr_with_feature_selection = {
+        'accuracy': accuracy_score(y_test, predictions),
+        'precision': precision_score(y_test, predictions),
+        'recall': recall_score(y_test, predictions),
+        'f1': f1_score(y_test, predictions),
+        'conf_matrix': confusion_matrix(y_test, predictions),
+        'roc_auc': roc_auc_score(y_test, predictions)
+    }
 
     with open("/tmp/modelo_XG_corr.pkl", "wb") as f:
         pickle.dump(model_cor, f)
@@ -221,7 +234,7 @@ def train_and_save_model(**kwargs):
 
     print("finish")
     lock.release()
-    return [accuracy_corr,accuracy_corr_fea]
+    return [metrics_dict_corr,metrics_dict_corr_with_feature_selection]
 
 
 def upload_model_mlflow(**kwargs):
@@ -230,36 +243,42 @@ def upload_model_mlflow(**kwargs):
     import os
     # Iniciar un experimento de MLflow
     ti = kwargs['ti']
-    accuracy = ti.xcom_pull(task_ids='train_and_save_model')
+    metrics = ti.xcom_pull(task_ids='train_and_save_model')
     with open("/tmp/modelo_XG_corr.pkl", "rb") as f:
         model_cor = pickle.load(f)
 
     with open("/tmp/modelo_XG_fea.pkl", "rb") as f:
         model_cor_sel_fea = pickle.load(f)
-
-    print("hola")    
+ 
     os.environ["MLFLOW_S3_ENDPOINT_URL"] = "http://minio-cli.minio.svc.cluster.local:9000"
     os.environ["AWS_ACCESS_KEY_ID"] = "sdg-user"
     os.environ["AWS_SECRET_ACCESS_KEY"] = "sdg-password"
     os.environ["MLFLOW_TRACKING_USERNAME"] = "admin"
     os.environ["MLFLOW_TRACKING_PASSWORD"] = "password"
     MLFLOW_TRACKING_URI = "http://mlflow-service.mlflow.svc.cluster.local:5000"
-
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-    mlflow.set_experiment("XG-Boost")
-    print("hola")
-    # Iniciar una corrida de MLflow
-    with mlflow.start_run():
-        mlflow.log_params({"n_estimators": 100})
-        mlflow.log_metric("accuracy", accuracy[0])
-        mlflow.sklearn.log_model(model_cor, "modelo_random_forest")
 
+    mlflow.set_experiment("XG-Boost-with-correlation")
     with mlflow.start_run():
-        mlflow.log_params({"n_estimators": 100})
-        mlflow.log_metric("accuracy", accuracy[1])
-        print("hola")
-        # Guardar el modelo
-        mlflow.sklearn.log_model(model_cor, "modelo_random_forest")
+        mlflow.log_params({"learning_rate": 0.5})
+        mlflow.log_params({"n_estimators": 400})
+        mlflow.log_params({"max_depth": 7})
+        mlflow.log_params({"objective": "binary:logistic"})
+        mlflow.log_artifact('/tmp/preprocess-dataset.csv')
+        for metric_name, metric_value in metrics[0].items():
+            mlflow.log_metric(metric_name, metric_value)
+        mlflow.sklearn.log_model(model_cor, "XGBoost model with Correlation")
+
+    mlflow.set_experiment("XG-Boost-with-correlation")
+    with mlflow.start_run():
+        mlflow.log_params({"learning_rate": 0.5})
+        mlflow.log_params({"n_estimators": 400})
+        mlflow.log_params({"max_depth": 7})
+        mlflow.log_params({"objective": "binary:logistic"})
+        mlflow.log_artifact('/tmp/preprocess-dataset.csv')
+        #for metric_name, metric_value in metrics[1].items():
+        mlflow.log_metric(metrics[1])
+        mlflow.sklearn.log_model(model_cor_sel_fea, "XGBoost model with Correlation and feature selection")
 
 
 # Definir el DAG
