@@ -294,7 +294,7 @@ def registry_models(**kwargs):
             mlflow.log_metric(metric_name, metric_value)
 
         for param_name, param_value in params_dict_corr.items():
-            mlflow.log_metric(param_name, param_value)
+            mlflow.log_param(param_name, param_value)
 
         mlflow.sklearn.log_model(model_cor_sel_fea, "XGBoost_corr_feasel")
         
@@ -312,7 +312,7 @@ def registry_models(**kwargs):
             mlflow.log_metric(metric_name, metric_value)
 
         for param_name, param_value in params_dict_corr.items():
-            mlflow.log_metric(param_name, param_value)
+            mlflow.log_param(param_name, param_value)
 
         mlflow.sklearn.log_model(model_cor, "XGBoost_corr")
         
