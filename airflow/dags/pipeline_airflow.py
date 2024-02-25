@@ -249,7 +249,7 @@ def upload_model_mlflow(**kwargs):
     # Iniciar un experimento de MLflow
 
     with open('/tmp/metrics.json', 'r') as f:
-        metrics = pickle.load(f)
+        metrics = json.load(f)
 
 
     with open("/tmp/modelo_XG_corr.pkl", "rb") as f:
