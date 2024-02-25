@@ -178,7 +178,7 @@ def train_and_save_model(**kwargs):
     model_cor = XGBClassifier(learning_rate=0.5, n_estimators=400, max_depth=7,objective='binary:logistic',
                     silent=False, nthread=2)
 
-
+    print("1")
     model_cor.fit(X_train, y_train)  
     y_pred = model_cor.predict(X_test)
     predictions = [round(value) for value in y_pred]
@@ -195,7 +195,7 @@ def train_and_save_model(**kwargs):
     }
 
 
-
+    print("1")
     importances = model_cor.feature_importances_
     importances = model_cor.feature_importances_
     feature_names = X_train.columns.to_list() 
@@ -209,7 +209,7 @@ def train_and_save_model(**kwargs):
     model_cor_sel_fea = XGBClassifier(learning_rate=0.5, n_estimators=400, max_depth=7,objective='binary:logistic',
                     silent=False, nthread=2)
     model_cor_sel_fea.fit(X_train, y_train)
-
+    print("3")
     y_pred = model_cor_sel_fea.predict(X_test)
     predictions = [round(value) for value in y_pred]
 
@@ -225,7 +225,7 @@ def train_and_save_model(**kwargs):
         'conf_matrix': confusion_matrix(y_test, predictions),
         'roc_auc': roc_auc_score(y_test, predictions)
     }
-
+    print("3")
     with open("/tmp/modelo_XG_corr.pkl", "wb") as f:
         pickle.dump(model_cor, f)
 
