@@ -237,7 +237,8 @@ def train_and_save_model(**kwargs):
 
     print("finish")
     lock.release()
-    return [metrics_dict_corr,metrics_dict_corr_with_feature_selection]
+    data_dict = [metrics_dict_corr,metrics_dict_corr_with_feature_selection]
+    return data_dict
 
 
 def upload_model_mlflow(**kwargs):
