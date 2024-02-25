@@ -227,6 +227,7 @@ def train_and_save_model(**kwargs):
         'conf_matrix': confusion_matrix(y_test, predictions),
         'roc_auc': roc_auc_score(y_test, predictions)
     }
+
     print("3")
     with open("/tmp/modelo_XG_corr.pkl", "wb") as f:
         pickle.dump(model_cor, f)
