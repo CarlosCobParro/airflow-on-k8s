@@ -180,8 +180,8 @@ def train_and_save_model(**kwargs):
 
     print("1")
     model_cor.fit(X_train, y_train)  
-    y_pred = model_cor.predict(X_test)
-    predictions = [round(value) for value in y_pred]
+    predictions = model_cor.predict(X_test)
+
     # evaluate predictions
     accuracy_corr = accuracy_score(y_test, predictions)
     print("Model_corr accuracy", accuracy_corr)
@@ -210,8 +210,8 @@ def train_and_save_model(**kwargs):
                     silent=False, nthread=2)
     model_cor_sel_fea.fit(X_train, y_train)
     print("3")
-    y_pred = model_cor_sel_fea.predict(X_test)
-    predictions = [round(value) for value in y_pred]
+    predictions = model_cor_sel_fea.predict(X_test)
+
 
     # evaluate predictions
     accuracy_corr_fea = accuracy_score(y_test, predictions)
