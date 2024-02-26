@@ -71,6 +71,7 @@ def preprocess_data():
 
     import pandas as pd
     from sklearn.linear_model import LinearRegression
+    import numpy as np
 
     path = '/tmp/dataset.csv'
     df = pd.read_csv(path, sep=';')
@@ -93,27 +94,36 @@ def preprocess_data():
 
 
                 
-    # Identify the columns containing missing values.
-    columns_with_nan = df.columns[df.isnull().any()].tolist()
+    # Identificar las columnas que contienen valores faltantes.
+    columnas_con_nan = df.columns[df.isnull().any()].tolist()
 
-    # Split the data into two sets: one with complete values and another with missing values.
-    df_without_missing_values = df.dropna()
-    df_with_missing_values = df[df.isnull().any(axis=1)]
+    # Obtener índices de filas con NaN y sin NaN
+    filas_con_nan = df.index[df.isnull().any(axis=1)]
+    filas_sin_nan = df.index[~df.isnull().any(axis=1)]
 
-    # Separate features and labels for the dataset with complete values.
-    X_train = df_without_missing_values.drop(columns=columns_with_nan)
-    y_train = df_without_missing_values[columns_with_nan]
+    # Filtrar solo las columnas con NaN
+    X_train = df.drop(columns=columnas_con_nan)
 
-    # Train a linear regression model.
-    model_reg = LinearRegression()
-    model_reg.fit(X_train, y_train)
+    # Si hay al menos una fila con valores NaN y una fila sin valores NaN
+    if len(filas_con_nan) > 0 and len(filas_sin_nan) > 0:
+        # Obtener etiquetas para las filas sin NaN
+        etiquetas = df.loc[filas_sin_nan, columnas_con_nan]
 
-    # Use the model to predict the missing values in the dataset with missing values.
-    X_test = df_with_missing_values.drop(columns=columns_with_nan)
-    predicted_values = model_reg.predict(X_test)
+        # Entrenar modelo de regresión lineal
+        modelo_reg = LinearRegression()
 
-    # Assign the predicted values to the original DataFrame.
-    df.loc[df.isnull().any(axis=1), columns_with_nan] = predicted_values
+        # Verificar que haya suficientes datos para entrenar
+        if len(X_train) > 0 and len(etiquetas) > 0:
+            modelo_reg.fit(X_train.loc[filas_sin_nan], etiquetas)
+            
+            # Predecir valores NaN
+            valores_predichos = modelo_reg.predict(X_train.loc[filas_con_nan])
+
+            # Crear una máscara para identificar valores NaN
+            mascara_nan = df.isnull()
+
+            # Asignar los valores predichos solo a los valores NaN en el DataFrame original.
+            df.loc[filas_con_nan, columnas_con_nan] = np.where(mascara_nan.loc[filas_con_nan, columnas_con_nan], valores_predichos, df.loc[filas_con_nan, columnas_con_nan])
 
     df.to_csv('/tmp/preprocess-dataset.csv', index=False)
     lock.release()
