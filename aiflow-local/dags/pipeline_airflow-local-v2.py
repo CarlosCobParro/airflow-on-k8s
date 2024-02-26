@@ -35,7 +35,7 @@ def load_data():
             status_forcelist=[500, 502, 503, 504]
             )
         )
-    minio_url = "minio-cli.minio.svc.cluster.local:9000" 
+    minio_url = "172.29.0.1:9000" 
     minio_user = "sdg-user"
     minio_pass = "sdg-password"
     MINIO_BUCKET = "sdg"
@@ -266,12 +266,12 @@ def registry_models(**kwargs):
         model_cor_sel_fea = pickle.load(f)
 
     #MlFlow values
-    os.environ["MLFLOW_S3_ENDPOINT_URL"] = "http://minio-cli.minio.svc.cluster.local:9000"
+    os.environ["MLFLOW_S3_ENDPOINT_URL"] = "http://172.29.0.1:9000"
     os.environ["AWS_ACCESS_KEY_ID"] = "sdg-user"
     os.environ["AWS_SECRET_ACCESS_KEY"] = "sdg-password"
     os.environ["MLFLOW_TRACKING_USERNAME"] = "admin"
     os.environ["MLFLOW_TRACKING_PASSWORD"] = "password"
-    MLFLOW_TRACKING_URI = "http://mlflow-service.mlflow.svc.cluster.local:5000"
+    MLFLOW_TRACKING_URI = "http://172.29.0.1:5000"
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 
 
